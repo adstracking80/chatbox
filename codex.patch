@@ -1,0 +1,867 @@
+diff --git a/README.md b/README.md
+index e0cc0f862a1d1bbccbda7966435489813bbd19ce..5eb605699b90c2d733e5ba4721126f0294e662e0 100644
+--- a/README.md
++++ b/README.md
+@@ -1 +1,37 @@
+-# chatbox
+\ No newline at end of file
++# ChatBox CRM/Chat Scaffold
++
++This repository now includes a starter structure for a Pipedrive-style CRM with an integrated chat widget and dual-scope authentication (/login for users, /admin for owner). The code is intentionally lightweight and scaffold-only so you can copy/paste and extend quickly. The layout is inspired by Laravel-style modularity (see krayin/laravel-crm) but is intentionally framework-lite for cPanel deployments.
++
++## Structure
++- `api/` – PHP backend scaffold (public entrypoint, routes, config placeholders).
++- `web/` – CRM web app scaffold (login + dashboard placeholder).
++- `widget/` – Website chat widget starter (JS to replace WhatsApp popup, with attribution capture).
++- `admin/` – Owner/admin UI scaffold (manage users, pipelines, settings).
++- `scripts/sql/` – Initial SQL migrations for core CRM + chat + attribution.
++- `scripts/deploy/` – Placeholder for deployment scripts.
++
++## Getting started (high level)
++1. Copy `scripts/sql/001_init.sql` into your MySQL instance (cPanel) to create core tables.
++2. Configure `api/config/config.example.php` into `config.php` with DB creds and JWT secrets.
++3. Point your web server to `api/public/index.php` for API traffic (e.g., `api.adsandtracking.com`).
++4. Serve `web/public/index.html` for the CRM app at `chatbox.adsandtracking.com` and `/login/` route.
++5. Serve `admin/public/index.html` for owner admin at `/admin/`.
++6. Embed `widget/src/widget.js` (after bundling/minifying if desired) on your marketing site to replace the WhatsApp widget.
++
++## Notes
++- All PHP files are skeletons—fill in routing, controllers, and JWT/session handling.
++- Widget starter captures email/phone, supports anonymous mode, and sends attribution (gclid/fbclid/UTM) to the `/session` endpoint you will implement.
++- SQL includes lead lifecycle fields (new/qualified/converted/disqualified) and attribution columns.
++
++## API scaffold (inspired by krayin/laravel-crm patterns)
++- Auth: `POST /auth/login`, `POST /auth/admin/login`
++- Chat (public): `POST /session`, `POST /messages`, `GET /messages`
++- Admin chat: `GET /admin/conversations`, `POST /admin/messages`, `POST /admin/conversations/status`, `GET /admin/export.csv`
++- Health: `GET /health`
++
++These routes currently return placeholder JSON/CSV. Replace stubs with real DB + JWT logic as you wire up the schema from `scripts/sql/001_init.sql`.
++
++### Optimization notes
++- CORS is applied from `config.php` (defaults to allowing configured origins).
++- OPTIONS preflight returns 204 to keep the widget snappy.
++- JSON helpers parse request bodies; bearer token helper reads `Authorization` headers.
+diff --git a/admin/public/index.html b/admin/public/index.html
+new file mode 100644
+index 0000000000000000000000000000000000000000..8755baf89c1ec03c22d5b18708fb02e42cf96c5f
+--- /dev/null
++++ b/admin/public/index.html
+@@ -0,0 +1,38 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++  <title>ChatBox Admin</title>
++  <style>
++    body { font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; background: #0b1224; color: #e5e7eb; }
++    .shell { max-width: 800px; margin: 0 auto; padding: 48px 24px; }
++    .card { background: #111827; border: 1px solid #1f2937; border-radius: 12px; padding: 24px; }
++    h1 { margin: 0 0 12px; }
++    .muted { color: #94a3b8; }
++    .btn { display:inline-flex; align-items:center; gap:8px; padding:12px 16px; border-radius:10px; border:none; cursor:pointer; font-weight:600; }
++    .btn-primary { background:#22c55e; color:#0b1224; }
++    ul { padding-left: 20px; }
++  </style>
++</head>
++<body>
++  <div class="shell">
++    <div class="card">
++      <h1>ChatBox Admin (/admin/)</h1>
++      <p class="muted">Owner controls: manage users/roles, pipelines/stages, custom fields, branding, widget origins.</p>
++      <div style="margin-top:16px; display:flex; gap:12px; flex-wrap:wrap;">
++        <button class="btn btn-primary">Admin Login</button>
++        <button class="btn" style="background:#1f2937; color:#e2e8f0; border:1px solid #22c55e;">Manage Pipelines</button>
++      </div>
++      <h3 style="margin-top:24px;">Quick tasks</h3>
++      <ul class="muted">
++        <li>Create/update pipelines and stages</li>
++        <li>Manage users and roles</li>
++        <li>Define custom fields (deals/contacts/companies)</li>
++        <li>Set allowed widget origins and branding (logo/colors)</li>
++        <li>Export data (CSV) and view audit logs</li>
++      </ul>
++    </div>
++  </div>
++</body>
++</html>
+diff --git a/api/config/config.example.php b/api/config/config.example.php
+new file mode 100644
+index 0000000000000000000000000000000000000000..23ad4267d703297403ade473bb6093aa72ace44b
+--- /dev/null
++++ b/api/config/config.example.php
+@@ -0,0 +1,24 @@
++<?php
++
++// Copy to config.php and fill your values.
++return [
++    'db' => [
++        'host' => 'localhost',
++        'name' => 'chatbox',
++        'user' => 'db_user',
++        'pass' => 'db_pass',
++        'charset' => 'utf8mb4',
++    ],
++    'jwt' => [
++        'secret' => 'replace-with-strong-secret',
++        'issuer' => 'chatbox.adsandtracking.com',
++        'audience' => 'chatbox.adsandtracking.com',
++        'ttl_seconds' => 86400,
++    ],
++    'cors' => [
++        'allowed_origins' => ['https://adsandtracking.com', 'https://chatbox.adsandtracking.com'],
++    ],
++    'app' => [
++        'allow_anonymous_chat' => false,
++    ],
++];
+diff --git a/api/public/index.php b/api/public/index.php
+new file mode 100644
+index 0000000000000000000000000000000000000000..790277f244e8235d24bc41509c88dc83998374f5
+--- /dev/null
++++ b/api/public/index.php
+@@ -0,0 +1,9 @@
++<?php
++// Entry point for the API. Lightweight router bootstrap.
++
++require_once __DIR__ . '/../src/bootstrap.php';
++
++use Chatbox\App;
++
++$app = new App();
++$app->run();
+diff --git a/api/src/bootstrap.php b/api/src/bootstrap.php
+new file mode 100644
+index 0000000000000000000000000000000000000000..56e504a06260aca1f622a5299121c1839782716e
+--- /dev/null
++++ b/api/src/bootstrap.php
+@@ -0,0 +1,82 @@
++<?php
++
++namespace Chatbox;
++
++// Minimal bootstrap for dependency loading and routing.
++// Inspired by Laravel-style separation (see krayin/laravel-crm), but simplified for cPanel.
++
++class App
++{
++    public function run(): void
++    {
++        $config = $this->loadConfig();
++
++        // Load helpers and controllers
++        require_once __DIR__ . '/helpers.php';
++        require_once __DIR__ . '/controllers/Response.php';
++        require_once __DIR__ . '/controllers/AuthController.php';
++        require_once __DIR__ . '/controllers/ChatController.php';
++        require_once __DIR__ . '/controllers/AdminController.php';
++
++        // Pass config down if needed by controllers/services.
++        $GLOBALS['chatbox_config'] = $config;
++
++        $this->applyCors($config);
++
++        // Handle preflight early.
++        if (strtoupper($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
++            http_response_code(204);
++            exit;
++        }
++
++        require_once __DIR__ . '/routes.php';
++    }
++
++    private function loadConfig(): array
++    {
++        $configFile = __DIR__ . '/../config/config.php';
++        $exampleFile = __DIR__ . '/../config/config.example.php';
++
++        if (file_exists($configFile)) {
++            return require $configFile;
++        }
++
++        if (file_exists($exampleFile)) {
++            return require $exampleFile;
++        }
++
++        return [
++            'db' => [
++                'host' => 'localhost',
++                'name' => '',
++                'user' => '',
++                'pass' => '',
++                'charset' => 'utf8mb4',
++            ],
++            'jwt' => [
++                'secret' => 'set-a-secret',
++                'issuer' => 'chatbox.adsandtracking.com',
++                'audience' => 'chatbox.adsandtracking.com',
++                'ttl_seconds' => 86400,
++            ],
++            'cors' => [
++                'allowed_origins' => ['*'],
++            ],
++            'app' => [
++                'allow_anonymous_chat' => false,
++            ],
++        ];
++    }
++
++    private function applyCors(array $config): void
++    {
++        $origins = $config['cors']['allowed_origins'] ?? ['*'];
++        $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
++        if (in_array('*', $origins, true) || in_array($origin, $origins, true)) {
++            header('Access-Control-Allow-Origin: ' . ($origin ?: '*'));
++            header('Vary: Origin');
++        }
++        header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
++        header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Public-Key');
++    }
++}
+diff --git a/api/src/controllers/AdminController.php b/api/src/controllers/AdminController.php
+new file mode 100644
+index 0000000000000000000000000000000000000000..fcedd0e1c930f38fb0f62ce1422be9ea170eac3c
+--- /dev/null
++++ b/api/src/controllers/AdminController.php
+@@ -0,0 +1,65 @@
++<?php
++
++namespace Chatbox\Controllers;
++use function Chatbox\json_input;
++use function Chatbox\bearer_token;
++
++class AdminController
++{
++    public function listConversations(): void
++    {
++        $token = bearer_token();
++        if (!$token) {
++            Response::error('Missing admin token', 401);
++        }
++        // Add filtering by status, lead_status, source/campaign in production.
++        Response::json([
++            'items' => [
++                [
++                    'id' => 1,
++                    'lead_status' => 'new',
++                    'contact_email' => 'demo@example.com',
++                    'source' => 'utm_campaign_placeholder',
++                ],
++            ],
++            'filters' => $_GET,
++        ]);
++    }
++
++    public function postMessage(): void
++    {
++        $token = bearer_token();
++        if (!$token) {
++            Response::error('Missing admin token', 401);
++        }
++        $payload = json_input();
++        // TODO: validate and persist reply.
++        Response::json([
++            'status' => 'ok',
++            'message' => 'Agent reply accepted (placeholder).',
++        ]);
++    }
++
++    public function updateConversationStatus(): void
++    {
++        $token = bearer_token();
++        if (!$token) {
++            Response::error('Missing admin token', 401);
++        }
++        $payload = json_input();
++        // Expect: status (open/closed) and lead_status transitions.
++        Response::json([
++            'status' => 'ok',
++            'message' => 'Conversation status updated (placeholder).',
++        ]);
++    }
++
++    public function exportCsv(): void
++    {
++        $rows = [
++            ['conversation_id', 'lead_status', 'email', 'gclid', 'fbclid', 'utm_source', 'utm_campaign'],
++            [1, 'new', 'demo@example.com', 'gclid-123', 'fbclid-456', 'google', 'spring_campaign'],
++        ];
++        Response::csv('conversations_export.csv', $rows);
++    }
++}
+diff --git a/api/src/controllers/AuthController.php b/api/src/controllers/AuthController.php
+new file mode 100644
+index 0000000000000000000000000000000000000000..b197c163bec96eb249814dfe847922dca02cbb63
+--- /dev/null
++++ b/api/src/controllers/AuthController.php
+@@ -0,0 +1,29 @@
++<?php
++
++namespace Chatbox\Controllers;
++use function Chatbox\json_input;
++
++class AuthController
++{
++    public function userLogin(): void
++    {
++        $payload = json_input();
++        // TODO: validate $payload['email'], $payload['password'], then issue JWT/session
++        Response::json([
++            'token' => 'user-jwt-placeholder',
++            'role' => 'user',
++            'note' => 'Replace with real authentication and password hashing.',
++        ]);
++    }
++
++    public function adminLogin(): void
++    {
++        $payload = json_input();
++        // TODO: validate owner/admin credentials
++        Response::json([
++            'token' => 'admin-jwt-placeholder',
++            'role' => 'admin',
++            'note' => 'Replace with real authentication and password hashing.',
++        ]);
++    }
++}
+diff --git a/api/src/controllers/ChatController.php b/api/src/controllers/ChatController.php
+new file mode 100644
+index 0000000000000000000000000000000000000000..c5effc1bea97bf848d138bbaf64d8a4fda2fba6e
+--- /dev/null
++++ b/api/src/controllers/ChatController.php
+@@ -0,0 +1,44 @@
++<?php
++
++namespace Chatbox\Controllers;
++use function Chatbox\json_input;
++use function Chatbox\bearer_token;
++
++class ChatController
++{
++    public function createSession(): void
++    {
++        $payload = json_input();
++        // TODO: validate contact/anonymous and attribution (gclid/fbclid/UTM), persist to DB.
++        Response::json([
++            'conversationId' => rand(1000, 9999),
++            'sessionToken' => 'session-token-placeholder',
++            'message' => 'Session created (placeholder). Persist to DB in production.',
++        ], 201);
++    }
++
++    public function postMessage(): void
++    {
++        $token = bearer_token();
++        if (!$token) {
++            Response::error('Missing bearer token', 401);
++        }
++        $payload = json_input();
++        // TODO: validate and persist message.
++        Response::json([
++            'status' => 'ok',
++            'message' => 'Message accepted (placeholder).',
++        ]);
++    }
++
++    public function listMessages(): void
++    {
++        // Return paginated conversation history (placeholder data).
++        Response::json([
++            'conversationId' => $_GET['conversationId'] ?? null,
++            'messages' => [
++                ['sender' => 'user', 'body' => 'Hello', 'at' => date(DATE_ATOM)],
++            ],
++        ]);
++    }
++}
+diff --git a/api/src/controllers/Response.php b/api/src/controllers/Response.php
+new file mode 100644
+index 0000000000000000000000000000000000000000..b7135f0c21b84b3592d5fcfa19ba8a9cd9ddcd7d
+--- /dev/null
++++ b/api/src/controllers/Response.php
+@@ -0,0 +1,32 @@
++<?php
++
++namespace Chatbox\Controllers;
++
++class Response
++{
++    public static function json(array $data, int $code = 200): void
++    {
++        http_response_code($code);
++        header('Content-Type: application/json');
++        echo json_encode($data);
++        exit;
++    }
++
++    public static function error(string $message, int $code = 400, array $extra = []): void
++    {
++        $body = array_merge(['error' => $message], $extra);
++        self::json($body, $code);
++    }
++
++    public static function csv(string $filename, array $rows): void
++    {
++        header('Content-Type: text/csv');
++        header('Content-Disposition: attachment; filename="' . $filename . '"');
++        $out = fopen('php://output', 'w');
++        foreach ($rows as $row) {
++            fputcsv($out, $row);
++        }
++        fclose($out);
++        exit;
++    }
++}
+diff --git a/api/src/helpers.php b/api/src/helpers.php
+new file mode 100644
+index 0000000000000000000000000000000000000000..0ae819bcec2d2ce83702454ea8275852cd7e4b62
+--- /dev/null
++++ b/api/src/helpers.php
+@@ -0,0 +1,26 @@
++<?php
++
++namespace Chatbox;
++
++/**
++ * Lightweight helpers for request parsing and auth stubs.
++ */
++
++function json_input(): array
++{
++    $raw = file_get_contents('php://input');
++    if (!$raw) {
++        return [];
++    }
++    $data = json_decode($raw, true);
++    return is_array($data) ? $data : [];
++}
++
++function bearer_token(): ?string
++{
++    $hdr = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
++    if (stripos($hdr, 'Bearer ') === 0) {
++        return trim(substr($hdr, 7));
++    }
++    return null;
++}
+diff --git a/api/src/routes.php b/api/src/routes.php
+new file mode 100644
+index 0000000000000000000000000000000000000000..7814c94f5af2088b7facc591db2f10d1d7c29413
+--- /dev/null
++++ b/api/src/routes.php
+@@ -0,0 +1,36 @@
++<?php
++
++use Chatbox\Controllers\AuthController;
++use Chatbox\Controllers\ChatController;
++use Chatbox\Controllers\AdminController;
++use Chatbox\Controllers\Response;
++
++$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
++$path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
++
++// Very small router. Replace with a full micro-framework as you scale.
++$routes = [
++    ['POST', '/auth/login', [new AuthController(), 'userLogin']],
++    ['POST', '/auth/admin/login', [new AuthController(), 'adminLogin']],
++    ['POST', '/session', [new ChatController(), 'createSession']],
++    ['POST', '/messages', [new ChatController(), 'postMessage']],
++    ['GET', '/messages', [new ChatController(), 'listMessages']],
++    ['GET', '/admin/conversations', [new AdminController(), 'listConversations']],
++    ['POST', '/admin/messages', [new AdminController(), 'postMessage']],
++    ['POST', '/admin/conversations/status', [new AdminController(), 'updateConversationStatus']],
++    ['GET', '/admin/export.csv', [new AdminController(), 'exportCsv']],
++    ['GET', '/health', function () { Response::json(['status' => 'ok']); }],
++];
++
++foreach ($routes as [$verb, $routePath, $handler]) {
++    if ($method === $verb && $path === $routePath) {
++        if (is_callable($handler)) {
++            $handler();
++        } elseif (is_array($handler) && is_callable($handler)) {
++            call_user_func($handler);
++        }
++        exit;
++    }
++}
++
++Response::json(['error' => 'Not Found', 'path' => $path], 404);
+diff --git a/scripts/sql/001_init.sql b/scripts/sql/001_init.sql
+new file mode 100644
+index 0000000000000000000000000000000000000000..70ec53608613e33ef2bdf9ecb5f365b504204d9b
+--- /dev/null
++++ b/scripts/sql/001_init.sql
+@@ -0,0 +1,204 @@
++-- Core schema for ChatBox CRM + Chat + Attribution
++
++CREATE TABLE tenants (
++  id INT AUTO_INCREMENT PRIMARY KEY,
++  name VARCHAR(100) NOT NULL,
++  api_key VARCHAR(64) NOT NULL,
++  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
++);
++
++CREATE TABLE users (
++  id INT AUTO_INCREMENT PRIMARY KEY,
++  tenant_id INT NOT NULL,
++  email VARCHAR(190) UNIQUE NOT NULL,
++  password_hash VARCHAR(255) NOT NULL,
++  role ENUM('user','manager') DEFAULT 'user',
++  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
++  FOREIGN KEY (tenant_id) REFERENCES tenants(id)
++);
++
++CREATE TABLE owners (
++  id INT AUTO_INCREMENT PRIMARY KEY,
++  email VARCHAR(190) UNIQUE NOT NULL,
++  password_hash VARCHAR(255) NOT NULL,
++  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
++);
++
++CREATE TABLE pipelines (
++  id INT AUTO_INCREMENT PRIMARY KEY,
++  tenant_id INT NOT NULL,
++  name VARCHAR(100) NOT NULL,
++  sort_order INT DEFAULT 0,
++  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
++  FOREIGN KEY (tenant_id) REFERENCES tenants(id)
++);
++
++CREATE TABLE stages (
++  id INT AUTO_INCREMENT PRIMARY KEY,
++  tenant_id INT NOT NULL,
++  pipeline_id INT NOT NULL,
++  name VARCHAR(100) NOT NULL,
++  sort_order INT DEFAULT 0,
++  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
++  FOREIGN KEY (tenant_id) REFERENCES tenants(id),
++  FOREIGN KEY (pipeline_id) REFERENCES pipelines(id)
++);
++
++CREATE TABLE contacts (
++  id BIGINT AUTO_INCREMENT PRIMARY KEY,
++  tenant_id INT NOT NULL,
++  first_name VARCHAR(100),
++  last_name VARCHAR(100),
++  email VARCHAR(190),
++  phone VARCHAR(32),
++  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
++  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
++  FOREIGN KEY (tenant_id) REFERENCES tenants(id)
++);
++
++CREATE TABLE companies (
++  id BIGINT AUTO_INCREMENT PRIMARY KEY,
++  tenant_id INT NOT NULL,
++  name VARCHAR(190) NOT NULL,
++  domain VARCHAR(190),
++  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
++  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
++  FOREIGN KEY (tenant_id) REFERENCES tenants(id)
++);
++
++CREATE TABLE deals (
++  id BIGINT AUTO_INCREMENT PRIMARY KEY,
++  tenant_id INT NOT NULL,
++  title VARCHAR(190) NOT NULL,
++  value DECIMAL(12,2) DEFAULT 0,
++  stage_id INT NOT NULL,
++  owner_id INT,
++  contact_id BIGINT,
++  company_id BIGINT,
++  status ENUM('open','won','lost') DEFAULT 'open',
++  lead_status ENUM('new','qualified','converted','disqualified') DEFAULT 'new',
++  qualified_at DATETIME NULL,
++  converted_at DATETIME NULL,
++  disqualified_at DATETIME NULL,
++  disqualify_reason TEXT,
++  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
++  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
++  FOREIGN KEY (tenant_id) REFERENCES tenants(id),
++  FOREIGN KEY (stage_id) REFERENCES stages(id),
++  FOREIGN KEY (owner_id) REFERENCES users(id),
++  FOREIGN KEY (contact_id) REFERENCES contacts(id),
++  FOREIGN KEY (company_id) REFERENCES companies(id)
++);
++
++CREATE TABLE activities (
++  id BIGINT AUTO_INCREMENT PRIMARY KEY,
++  tenant_id INT NOT NULL,
++  deal_id BIGINT,
++  contact_id BIGINT,
++  owner_id INT,
++  type ENUM('call','email','meeting','task') NOT NULL,
++  subject VARCHAR(190),
++  due_at DATETIME,
++  completed TINYINT(1) DEFAULT 0,
++  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
++  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
++  FOREIGN KEY (tenant_id) REFERENCES tenants(id),
++  FOREIGN KEY (deal_id) REFERENCES deals(id),
++  FOREIGN KEY (contact_id) REFERENCES contacts(id),
++  FOREIGN KEY (owner_id) REFERENCES users(id)
++);
++
++CREATE TABLE notes (
++  id BIGINT AUTO_INCREMENT PRIMARY KEY,
++  tenant_id INT NOT NULL,
++  deal_id BIGINT,
++  contact_id BIGINT,
++  body TEXT NOT NULL,
++  created_by INT,
++  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
++  FOREIGN KEY (tenant_id) REFERENCES tenants(id),
++  FOREIGN KEY (deal_id) REFERENCES deals(id),
++  FOREIGN KEY (contact_id) REFERENCES contacts(id),
++  FOREIGN KEY (created_by) REFERENCES users(id)
++);
++
++CREATE TABLE attachments (
++  id BIGINT AUTO_INCREMENT PRIMARY KEY,
++  tenant_id INT NOT NULL,
++  deal_id BIGINT,
++  contact_id BIGINT,
++  path VARCHAR(255) NOT NULL,
++  mime_type VARCHAR(100),
++  size_bytes INT,
++  created_by INT,
++  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
++  FOREIGN KEY (tenant_id) REFERENCES tenants(id),
++  FOREIGN KEY (deal_id) REFERENCES deals(id),
++  FOREIGN KEY (contact_id) REFERENCES contacts(id),
++  FOREIGN KEY (created_by) REFERENCES users(id)
++);
++
++CREATE TABLE conversations (
++  id BIGINT AUTO_INCREMENT PRIMARY KEY,
++  tenant_id INT NOT NULL,
++  contact_email VARCHAR(190),
++  contact_phone VARCHAR(32),
++  allow_anonymous TINYINT(1) DEFAULT 0,
++  lead_status ENUM('new','qualified','converted','disqualified') DEFAULT 'new',
++  qualified_at DATETIME NULL,
++  converted_at DATETIME NULL,
++  disqualified_at DATETIME NULL,
++  disqualify_reason TEXT,
++  gclid VARCHAR(190),
++  fbclid VARCHAR(190),
++  utm_source VARCHAR(100),
++  utm_medium VARCHAR(100),
++  utm_campaign VARCHAR(100),
++  utm_term VARCHAR(100),
++  utm_content VARCHAR(100),
++  referrer VARCHAR(255),
++  landing_page VARCHAR(255),
++  status ENUM('open','closed') DEFAULT 'open',
++  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
++  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
++  FOREIGN KEY (tenant_id) REFERENCES tenants(id)
++);
++
++CREATE TABLE messages (
++  id BIGINT AUTO_INCREMENT PRIMARY KEY,
++  conversation_id BIGINT NOT NULL,
++  sender ENUM('user','agent') NOT NULL,
++  agent_id INT,
++  body TEXT NOT NULL,
++  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
++  FOREIGN KEY (conversation_id) REFERENCES conversations(id),
++  FOREIGN KEY (agent_id) REFERENCES users(id)
++);
++
++CREATE TABLE custom_fields (
++  id INT AUTO_INCREMENT PRIMARY KEY,
++  tenant_id INT NOT NULL,
++  entity ENUM('deal','contact','company') NOT NULL,
++  name VARCHAR(100) NOT NULL,
++  field_key VARCHAR(100) NOT NULL,
++  type ENUM('text','number','date','select','multiselect','boolean') NOT NULL,
++  options TEXT NULL,
++  required TINYINT(1) DEFAULT 0,
++  sort_order INT DEFAULT 0,
++  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
++  FOREIGN KEY (tenant_id) REFERENCES tenants(id),
++  UNIQUE KEY unique_field_key (tenant_id, entity, field_key)
++);
++
++CREATE TABLE custom_field_values (
++  id BIGINT AUTO_INCREMENT PRIMARY KEY,
++  field_id INT NOT NULL,
++  entity ENUM('deal','contact','company') NOT NULL,
++  entity_id BIGINT NOT NULL,
++  value TEXT,
++  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
++  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
++  FOREIGN KEY (field_id) REFERENCES custom_fields(id),
++  INDEX idx_entity (entity, entity_id)
++);
++
+diff --git a/web/public/index.html b/web/public/index.html
+new file mode 100644
+index 0000000000000000000000000000000000000000..f691dc0b2f05f916bfa5183e397cccf60e58de0c
+--- /dev/null
++++ b/web/public/index.html
+@@ -0,0 +1,44 @@
++<!doctype html>
++<html lang="en">
++<head>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++  <title>ChatBox CRM</title>
++  <style>
++    body { font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; background: #0f172a; color: #e2e8f0; }
++    .shell { max-width: 1100px; margin: 0 auto; padding: 48px 24px; }
++    .card { background: #111827; border: 1px solid #1f2937; border-radius: 12px; padding: 24px; }
++    h1, h2 { margin: 0 0 12px; }
++    .muted { color: #94a3b8; }
++    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 16px; border-radius: 10px; border: none; cursor: pointer; font-weight: 600; }
++    .btn-primary { background: #22c55e; color: #0b1224; }
++    .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin-top: 24px; }
++  </style>
++</head>
++<body>
++  <div class="shell">
++    <div class="card">
++      <h1>ChatBox CRM (Scaffold)</h1>
++      <p class="muted">This is the placeholder CRM UI. Replace with your React/Vue app and route /login/ here.</p>
++      <div style="margin-top:16px; display:flex; gap:12px; flex-wrap:wrap;">
++        <button class="btn btn-primary">Go to Login (/login/)</button>
++        <button class="btn" style="background:#1f2937; color:#e2e8f0; border:1px solid #22c55e;">Open Pipeline Board</button>
++      </div>
++      <div class="grid">
++        <div class="card">
++          <h2>Pipeline</h2>
++          <p class="muted">Kanban stages, drag-and-drop, quick actions.</p>
++        </div>
++        <div class="card">
++          <h2>Contacts & Companies</h2>
++          <p class="muted">Search, filters, dedupe hints, custom fields.</p>
++        </div>
++        <div class="card">
++          <h2>Chat Console</h2>
++          <p class="muted">Reply to website visitors, view attribution, update lead status.</p>
++        </div>
++      </div>
++    </div>
++  </div>
++</body>
++</html>
+diff --git a/widget/src/widget.js b/widget/src/widget.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..fd1958a2b07b0226b18581de83b2d8779cffd495
+--- /dev/null
++++ b/widget/src/widget.js
+@@ -0,0 +1,112 @@
++(function(){
++  if (window.__chatboxWidget_v1) return; window.__chatboxWidget_v1 = true;
++
++  const CFG = {
++    apiBase: "https://api.adsandtracking.com",
++    tenantId: "TENANT_ID",
++    publicKey: "PUBLIC_KEY",
++    name: "Rifat",
++    subText: "Typically replies in a few hours",
++    greetingHtml: "Hi there 🙂,<br>How can I help you?<br><b>To start chat, enter your email or phone</b>",
++    buttonText: "Start Chat",
++    avatarUrl: "https://adsandtracking.com/wp-content/uploads/2025/12/whatsapp_user.png",
++    bgUrl: "https://adsandtracking.com/wp-content/uploads/2025/12/whatsapp-background.png",
++    fabIconPng: "https://adsandtracking.com/wp-content/uploads/2025/12/WhatsApplogo-1.png",
++    emailPlaceholder: "Enter your email or phone to start",
++    msgPlaceholder: "Write your message",
++    storageKey: "chatbox_session_v1",
++    allowAnonymous: false
++  };
++
++  function qs(key){return new URLSearchParams(window.location.search).get(key)||"";}
++  const utm = {
++    gclid: qs("gclid"),
++    fbclid: qs("fbclid"),
++    utm_source: qs("utm_source"),
++    utm_medium: qs("utm_medium"),
++    utm_campaign: qs("utm_campaign"),
++    utm_term: qs("utm_term"),
++    utm_content: qs("utm_content"),
++    referrer: document.referrer || "",
++    landing_page: window.location.href
++  };
++
++  var css =
++    ".cb-chat{position:fixed;right:22px;bottom:22px;z-index:999999;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}" +
++    ".cb-fab{display:inline-flex;align-items:center;gap:10px;background:#1fbf5b;color:#fff;border:0;border-radius:999px;padding:12px 16px;cursor:pointer;box-shadow:0 18px 45px rgba(0,0,0,.18);}" +
++    ".cb-panel{width:330px;max-width:calc(100vw - 44px);background:#fff;border-radius:14px;box-shadow:0 18px 45px rgba(0,0,0,.18);overflow:hidden;position:absolute;right:0;bottom:64px;opacity:0;visibility:hidden;transform:translateY(10px);transition:.18s ease;}" +
++    ".cb-chat.is-open .cb-panel{opacity:1;visibility:visible;transform:translateY(0);}" +
++    ".cb-header{display:flex;align-items:center;gap:12px;padding:12px;background:#1f2d3d;color:#fff;}" +
++    ".cb-header-img img{width:42px;height:42px;border-radius:999px;object-fit:cover;}" +
++    ".cb-header-name{font-weight:700;font-size:14px;line-height:1.1;}" +
++    ".cb-header-sub{font-size:12px;color:rgba(255,255,255,.8);margin-top:2px;}" +
++    ".cb-body{height:240px;padding:14px;background-image:url('" + CFG.bgUrl + "');background-size:cover;background-position:center;position:relative;}" +
++    ".cb-body:after{content:'';position:absolute;inset:0;background:rgba(255,255,255,.68);}" +
++    ".cb-bubble{position:relative;z-index:1;max-width:85%;background:#fff;border-radius:12px;padding:10px 12px;box-shadow:0 8px 20px rgba(0,0,0,.10);}" +
++    ".cb-input{display:flex;gap:10px;padding:10px;background:#fff;border-top:1px solid rgba(0,0,0,.06);}" +
++    ".cb-input-field{flex:1;border:1px solid rgba(0,0,0,.12);border-radius:999px;padding:10px 12px;font-size:13px;outline:none;}" +
++    ".cb-send{width:42px;height:42px;border-radius:999px;border:0;cursor:pointer;background:#1fbf5b;color:#fff;font-size:16px;}";
++
++  var styleEl=document.createElement("style");styleEl.appendChild(document.createTextNode(css));document.head.appendChild(styleEl);
++
++  var root=document.createElement("div");root.className="cb-chat";root.id="cbChat";
++  root.innerHTML =
++  '<button class="cb-fab" type="button" id="cbOpenBtn" aria-label="Chat with us">' +
++    '<span class="cb-fab-icon" aria-hidden="true"><img src="' + CFG.fabIconPng + '" alt="" style="width:20px;height:20px;"/></span>' +
++    '<span class="cb-fab-text">' + CFG.buttonText + '</span></button>' +
++  '<div class="cb-panel" role="dialog" aria-label="Chat popup">' +
++    '<div class="cb-header">' +
++      '<div class="cb-header-img"><img id="cbAvatar" alt="Support" /></div>' +
++      '<div><div class="cb-header-name">' + CFG.name + '</div><div class="cb-header-sub">' + CFG.subText + '</div></div>' +
++      '<button style="margin-left:auto;border:0;background:transparent;color:#fff;font-size:18px;cursor:pointer;" type="button" id="cbCloseBtn" aria-label="Close">✕</button>' +
++    '</div>' +
++    '<div class="cb-body">' +
++      '<div class="cb-bubble"><div class="cb-bubble-name">' + CFG.name + '</div><div class="cb-bubble-text" id="cbBubbleText">' + CFG.greetingHtml + '</div><div class="cb-bubble-time" id="cbTime"></div></div>' +
++    '</div>' +
++    '<div class="cb-input">' +
++      '<input id="cbMsg" class="cb-input-field" type="text" placeholder="' + CFG.emailPlaceholder + '" />' +
++      '<button id="cbSendBtn" class="cb-send" type="button" aria-label="Send">➤</button>' +
++    '</div>' +
++  '</div>';
++  document.body.appendChild(root);
++
++  document.getElementById("cbAvatar").src = CFG.avatarUrl;
++  const openBtn=document.getElementById("cbOpenBtn"), closeBtn=document.getElementById("cbCloseBtn"), sendBtn=document.getElementById("cbSendBtn"), msgInput=document.getElementById("cbMsg"), bubbleText=document.getElementById("cbBubbleText");
++  let session = null; try{session=JSON.parse(localStorage.getItem(CFG.storageKey)||"null");}catch(e){}
++  function setTime(){var d=new Date();var hh=String(d.getHours()).padStart(2,"0"),mm=String(d.getMinutes()).padStart(2,"0");var t=document.getElementById("cbTime");if(t)t.textContent=hh+":"+mm;} setTime();
++  function open(){root.classList.add("is-open");setTime();setTimeout(()=>{try{msgInput&&msgInput.focus();}catch(e){}},50);} function close(){root.classList.remove("is-open");}
++  openBtn&&openBtn.addEventListener("click",()=>root.classList.contains("is-open")?close():open()); closeBtn&&closeBtn.addEventListener("click",close);
++  document.addEventListener("keydown",e=>{if(e.key==="Escape")close();});
++  async function createSession(contact){
++    const body=Object.assign({tenantId:CFG.tenantId, allowAnonymous:CFG.allowAnonymous}, utm, contact);
++    const res=await fetch(CFG.apiBase+"/session",{method:"POST",headers:{"Content-Type":"application/json","X-Public-Key":CFG.publicKey},body:JSON.stringify(body)});
++    if(!res.ok) throw new Error("session failed");
++    return res.json(); // {conversationId, sessionToken}
++  }
++  async function sendMessage(text){
++    if(!session){
++      const contact = {};
++      const v=text.trim();
++      if (!CFG.allowAnonymous && !v) throw new Error("contact required");
++      if (!CFG.allowAnonymous) {
++        if (/@/.test(v)) contact.email=v; else contact.phone=v;
++      }
++      session = await createSession(contact);
++      localStorage.setItem(CFG.storageKey, JSON.stringify(session));
++      if (bubbleText) bubbleText.innerHTML = "✅ Contact saved.<br>Now type your message.";
++      msgInput.placeholder = CFG.msgPlaceholder;
++      msgInput.value = "";
++      return;
++    }
++    const res=await fetch(CFG.apiBase+"/messages",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+session.sessionToken},body:JSON.stringify({conversationId:session.conversationId, body:text})});
++    if(!res.ok) throw new Error("send failed");
++    msgInput.value="";
++  }
++  function handleSend(){
++    const text=(msgInput&&msgInput.value||"").trim();
++    if(!text) return;
++    sendMessage(text).catch(()=>{msgInput.classList.add("cb-error");});
++  }
++  sendBtn&&sendBtn.addEventListener("click",handleSend);
++  msgInput&&msgInput.addEventListener("keydown",e=>{if(e.key==="Enter")handleSend();});
++})();
