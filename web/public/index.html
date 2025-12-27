@@ -121,7 +121,11 @@
         <span style="display:grid;place-items:center;width:34px;height:34px;border-radius:12px;background:rgba(34,197,94,0.16);color:var(--accent);font-weight:800;">CB</span>
         <span>ChatBox CRM</span>
       </div>
-      <span class="pill">/login · /admin</span>
+      <span class="pill">
+        <a href="/login/" style="color:inherit;text-decoration:none;">Login</a>
+        &nbsp;·&nbsp;
+        <a href="/admin/" style="color:inherit;text-decoration:none;">Admin</a>
+      </span>
     </nav>
   </header>
 
@@ -130,8 +134,8 @@
       <h1>Modern pipeline + chat console for fast-moving teams.</h1>
       <p>Manage deals, contacts, activities, and live website chats in one place. Start with this scaffold and plug in your React/Vue frontend and PHP API.</p>
       <div class="actions">
-        <button class="btn btn-primary">Go to Login (/login/)</button>
-        <button class="btn btn-ghost">Open Pipeline Board</button>
+        <a class="btn btn-primary" href="/login/">Go to Login</a>
+        <a class="btn btn-ghost" href="/pipeline/">Open Pipeline Board</a>
       </div>
     </section>
 
