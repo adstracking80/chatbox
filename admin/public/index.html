@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ChatBox Admin</title>
+  <style>
+    :root {
+      --bg: #060810;
+      --panel: #0c1424;
+      --panel-2: #0f172a;
+      --border: #1f2937;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #22c55e;
+      --shadow: 0 24px 72px rgba(0, 0, 0, 0.35);
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+      margin: 0;
+      background: radial-gradient(circle at 25% 10%, rgba(34,197,94,0.08), transparent 30%),
+                  radial-gradient(circle at 80% 0%, rgba(56,189,248,0.08), transparent 35%),
+                  var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .shell { max-width: 960px; margin: 0 auto; padding: 54px 24px 80px; }
+    .panel {
+      background: linear-gradient(145deg, rgba(34,197,94,0.08), transparent 45%), var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: var(--shadow);
+    }
+    h1 { margin: 0 0 10px; font-size: 28px; }
+    p { margin: 0 0 18px; color: var(--muted); line-height: 1.6; }
+    .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.16s ease, border-color 0.16s ease;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #0b1224;
+      border-color: rgba(34,197,94,0.45);
+      box-shadow: 0 12px 32px rgba(34,197,94,0.35);
+    }
+    .btn:hover { transform: translateY(-1px); border-color: rgba(255,255,255,0.08); }
+    .grid { display: grid; gap: 14px; margin-top: 22px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+    .card {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      min-height: 140px;
+      box-shadow: 0 14px 44px rgba(0,0,0,0.25);
+    }
+    .card h3 { margin: 0 0 10px; font-size: 17px; }
+    .card p { margin: 0; color: var(--muted); }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      color: var(--accent);
+      background: rgba(34,197,94,0.12);
+      border: 1px solid rgba(34,197,94,0.3);
+      margin-bottom: 8px;
+    }
+    footer { margin-top: 22px; color: var(--muted); font-size: 13px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="panel">
+      <h1>ChatBox Admin (/admin)</h1>
+      <p>Owner controls for everything: users/roles, pipelines/stages, custom fields, branding, and widget origins. Use this shell as the frame for your SPA.</p>
+      <div class="actions">
+        <button class="btn btn-primary">Admin Login</button>
+        <button class="btn">Manage Pipelines</button>
+        <button class="btn">Audit & Exports</button>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <div class="badge">Access</div>
+          <h3>Users & Roles</h3>
+          <p>Invite admins/agents, enforce permissions, and secure sessions.</p>
+        </div>
+        <div class="card">
+          <div class="badge">Data</div>
+          <h3>Custom Fields</h3>
+          <p>Define deal/contact/company fields and control required rules.</p>
+        </div>
+        <div class="card">
+          <div class="badge">Branding</div>
+          <h3>Widget & Theme</h3>
+          <p>Set logo, colors, allowed origins, and publish to your sites.</p>
+        </div>
+        <div class="card">
+          <div class="badge">Exports</div>
+          <h3>CSV & Audit</h3>
+          <p>Download conversations/deals with attribution; review change logs.</p>
+        </div>
+      </div>
+    </div>
+    <footer>ChatBox Admin scaffold · Replace with your SPA and wire to the PHP API.</footer>
+  </div>
+</body>
+</html>
