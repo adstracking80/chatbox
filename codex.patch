@@ -44,10 +44,10 @@ index e0cc0f862a1d1bbccbda7966435489813bbd19ce..5eb605699b90c2d733e5ba4721126f02
 +- JSON helpers parse request bodies; bearer token helper reads `Authorization` headers.
 diff --git a/admin/public/index.html b/admin/public/index.html
 new file mode 100644
-index 0000000000000000000000000000000000000000..8755baf89c1ec03c22d5b18708fb02e42cf96c5f
+index 0000000000000000000000000000000000000000..eddb3e9491fcd8f242ea8c34539762d4a80041c9
 --- /dev/null
 +++ b/admin/public/index.html
-@@ -0,0 +1,38 @@
+@@ -0,0 +1,122 @@
 +<!doctype html>
 +<html lang="en">
 +<head>
@@ -55,34 +55,118 @@ index 0000000000000000000000000000000000000000..8755baf89c1ec03c22d5b18708fb02e4
 +  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 +  <title>ChatBox Admin</title>
 +  <style>
-+    body { font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; background: #0b1224; color: #e5e7eb; }
-+    .shell { max-width: 800px; margin: 0 auto; padding: 48px 24px; }
-+    .card { background: #111827; border: 1px solid #1f2937; border-radius: 12px; padding: 24px; }
-+    h1 { margin: 0 0 12px; }
-+    .muted { color: #94a3b8; }
-+    .btn { display:inline-flex; align-items:center; gap:8px; padding:12px 16px; border-radius:10px; border:none; cursor:pointer; font-weight:600; }
-+    .btn-primary { background:#22c55e; color:#0b1224; }
-+    ul { padding-left: 20px; }
++    :root {
++      --bg: #060810;
++      --panel: #0c1424;
++      --panel-2: #0f172a;
++      --border: #1f2937;
++      --text: #e5e7eb;
++      --muted: #94a3b8;
++      --accent: #22c55e;
++      --shadow: 0 24px 72px rgba(0, 0, 0, 0.35);
++    }
++    * { box-sizing: border-box; }
++    body {
++      font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
++      margin: 0;
++      background: radial-gradient(circle at 25% 10%, rgba(34,197,94,0.08), transparent 30%),
++                  radial-gradient(circle at 80% 0%, rgba(56,189,248,0.08), transparent 35%),
++                  var(--bg);
++      color: var(--text);
++      min-height: 100vh;
++    }
++    .shell { max-width: 960px; margin: 0 auto; padding: 54px 24px 80px; }
++    .panel {
++      background: linear-gradient(145deg, rgba(34,197,94,0.08), transparent 45%), var(--panel);
++      border: 1px solid var(--border);
++      border-radius: 16px;
++      padding: 28px;
++      box-shadow: var(--shadow);
++    }
++    h1 { margin: 0 0 10px; font-size: 28px; }
++    p { margin: 0 0 18px; color: var(--muted); line-height: 1.6; }
++    .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
++    .btn {
++      display: inline-flex;
++      align-items: center;
++      gap: 8px;
++      padding: 12px 14px;
++      border-radius: 12px;
++      border: 1px solid var(--border);
++      background: transparent;
++      color: var(--text);
++      font-weight: 700;
++      cursor: pointer;
++      transition: transform 0.16s ease, border-color 0.16s ease;
++    }
++    .btn-primary {
++      background: var(--accent);
++      color: #0b1224;
++      border-color: rgba(34,197,94,0.45);
++      box-shadow: 0 12px 32px rgba(34,197,94,0.35);
++    }
++    .btn:hover { transform: translateY(-1px); border-color: rgba(255,255,255,0.08); }
++    .grid { display: grid; gap: 14px; margin-top: 22px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
++    .card {
++      background: var(--panel-2);
++      border: 1px solid var(--border);
++      border-radius: 12px;
++      padding: 16px;
++      min-height: 140px;
++      box-shadow: 0 14px 44px rgba(0,0,0,0.25);
++    }
++    .card h3 { margin: 0 0 10px; font-size: 17px; }
++    .card p { margin: 0; color: var(--muted); }
++    .badge {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      padding: 6px 10px;
++      border-radius: 999px;
++      font-size: 12px;
++      color: var(--accent);
++      background: rgba(34,197,94,0.12);
++      border: 1px solid rgba(34,197,94,0.3);
++      margin-bottom: 8px;
++    }
++    footer { margin-top: 22px; color: var(--muted); font-size: 13px; text-align: center; }
 +  </style>
 +</head>
 +<body>
 +  <div class="shell">
-+    <div class="card">
-+      <h1>ChatBox Admin (/admin/)</h1>
-+      <p class="muted">Owner controls: manage users/roles, pipelines/stages, custom fields, branding, widget origins.</p>
-+      <div style="margin-top:16px; display:flex; gap:12px; flex-wrap:wrap;">
++    <div class="panel">
++      <h1>ChatBox Admin (/admin)</h1>
++      <p>Owner controls for everything: users/roles, pipelines/stages, custom fields, branding, and widget origins. Use this shell as the frame for your SPA.</p>
++      <div class="actions">
 +        <button class="btn btn-primary">Admin Login</button>
-+        <button class="btn" style="background:#1f2937; color:#e2e8f0; border:1px solid #22c55e;">Manage Pipelines</button>
++        <button class="btn">Manage Pipelines</button>
++        <button class="btn">Audit & Exports</button>
 +      </div>
-+      <h3 style="margin-top:24px;">Quick tasks</h3>
-+      <ul class="muted">
-+        <li>Create/update pipelines and stages</li>
-+        <li>Manage users and roles</li>
-+        <li>Define custom fields (deals/contacts/companies)</li>
-+        <li>Set allowed widget origins and branding (logo/colors)</li>
-+        <li>Export data (CSV) and view audit logs</li>
-+      </ul>
++
++      <div class="grid">
++        <div class="card">
++          <div class="badge">Access</div>
++          <h3>Users & Roles</h3>
++          <p>Invite admins/agents, enforce permissions, and secure sessions.</p>
++        </div>
++        <div class="card">
++          <div class="badge">Data</div>
++          <h3>Custom Fields</h3>
++          <p>Define deal/contact/company fields and control required rules.</p>
++        </div>
++        <div class="card">
++          <div class="badge">Branding</div>
++          <h3>Widget & Theme</h3>
++          <p>Set logo, colors, allowed origins, and publish to your sites.</p>
++        </div>
++        <div class="card">
++          <div class="badge">Exports</div>
++          <h3>CSV & Audit</h3>
++          <p>Download conversations/deals with attribution; review change logs.</p>
++        </div>
++      </div>
 +    </div>
++    <footer>ChatBox Admin scaffold · Replace with your SPA and wire to the PHP API.</footer>
 +  </div>
 +</body>
 +</html>
@@ -699,10 +783,10 @@ index 0000000000000000000000000000000000000000..70ec53608613e33ef2bdf9ecb5f365b5
 +
 diff --git a/web/public/index.html b/web/public/index.html
 new file mode 100644
-index 0000000000000000000000000000000000000000..f691dc0b2f05f916bfa5183e397cccf60e58de0c
+index 0000000000000000000000000000000000000000..0606f9c049e18d4f6d19ad96460629ce18236404
 --- /dev/null
 +++ b/web/public/index.html
-@@ -0,0 +1,44 @@
+@@ -0,0 +1,166 @@
 +<!doctype html>
 +<html lang="en">
 +<head>
@@ -710,41 +794,163 @@ index 0000000000000000000000000000000000000000..f691dc0b2f05f916bfa5183e397cccf6
 +  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 +  <title>ChatBox CRM</title>
 +  <style>
-+    body { font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; background: #0f172a; color: #e2e8f0; }
-+    .shell { max-width: 1100px; margin: 0 auto; padding: 48px 24px; }
-+    .card { background: #111827; border: 1px solid #1f2937; border-radius: 12px; padding: 24px; }
-+    h1, h2 { margin: 0 0 12px; }
-+    .muted { color: #94a3b8; }
-+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 16px; border-radius: 10px; border: none; cursor: pointer; font-weight: 600; }
-+    .btn-primary { background: #22c55e; color: #0b1224; }
-+    .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin-top: 24px; }
++    :root {
++      --bg: #07090f;
++      --panel: #0f172a;
++      --panel-2: #111827;
++      --text: #e2e8f0;
++      --muted: #94a3b8;
++      --accent: #22c55e;
++      --accent-2: #5eead4;
++      --border: #1f2937;
++      --shadow: 0 25px 80px rgba(0, 0, 0, 0.35);
++    }
++    * { box-sizing: border-box; }
++    body {
++      margin: 0;
++      font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
++      background: radial-gradient(circle at 20% 20%, rgba(94, 234, 212, 0.08), transparent 25%),
++                  radial-gradient(circle at 80% 0%, rgba(34, 197, 94, 0.1), transparent 30%),
++                  var(--bg);
++      color: var(--text);
++      min-height: 100vh;
++    }
++    header {
++      border-bottom: 1px solid var(--border);
++      backdrop-filter: blur(10px);
++      background: rgba(7, 9, 15, 0.75);
++      position: sticky;
++      top: 0;
++      z-index: 10;
++    }
++    nav {
++      max-width: 1180px;
++      margin: 0 auto;
++      padding: 18px 24px;
++      display: flex;
++      align-items: center;
++      justify-content: space-between;
++    }
++    nav .brand {
++      display: inline-flex;
++      align-items: center;
++      gap: 10px;
++      font-weight: 700;
++      letter-spacing: 0.2px;
++    }
++    nav .pill {
++      background: rgba(34, 197, 94, 0.12);
++      color: var(--accent);
++      border: 1px solid rgba(34, 197, 94, 0.25);
++      padding: 6px 12px;
++      border-radius: 999px;
++      font-size: 13px;
++      font-weight: 600;
++    }
++    .shell { max-width: 1180px; margin: 0 auto; padding: 48px 24px 80px; }
++    .hero {
++      background: linear-gradient(135deg, rgba(34, 197, 94, 0.12), rgba(94, 234, 212, 0.08)) , var(--panel);
++      border: 1px solid var(--border);
++      border-radius: 16px;
++      padding: 36px;
++      box-shadow: var(--shadow);
++    }
++    .hero h1 { font-size: 32px; margin: 0 0 12px; }
++    .hero p { color: var(--muted); margin: 0 0 20px; max-width: 720px; }
++    .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
++    .btn {
++      display: inline-flex;
++      align-items: center;
++      gap: 10px;
++      padding: 12px 16px;
++      border-radius: 12px;
++      border: 1px solid transparent;
++      cursor: pointer;
++      font-weight: 700;
++      transition: all 0.16s ease;
++      font-size: 14px;
++    }
++    .btn-primary { background: var(--accent); color: #0b1224; border-color: rgba(34, 197, 94, 0.4); box-shadow: 0 10px 30px rgba(34, 197, 94, 0.35); }
++    .btn-ghost { background: transparent; color: var(--text); border-color: var(--border); }
++    .btn:hover { transform: translateY(-1px); }
++    .grid {
++      display: grid;
++      gap: 18px;
++      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
++      margin-top: 28px;
++    }
++    .card {
++      background: var(--panel-2);
++      border: 1px solid var(--border);
++      border-radius: 14px;
++      padding: 18px;
++      min-height: 170px;
++      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.25);
++    }
++    .card h3 { margin: 0 0 10px; font-size: 18px; }
++    .card p { margin: 0; color: var(--muted); line-height: 1.5; }
++    .badge {
++      display: inline-flex;
++      align-items: center;
++      gap: 6px;
++      padding: 6px 10px;
++      border-radius: 999px;
++      font-size: 12px;
++      color: var(--accent);
++      background: rgba(34, 197, 94, 0.1);
++      border: 1px solid rgba(34, 197, 94, 0.3);
++    }
++    footer { margin-top: 32px; color: var(--muted); font-size: 13px; text-align: center; }
 +  </style>
 +</head>
 +<body>
-+  <div class="shell">
-+    <div class="card">
-+      <h1>ChatBox CRM (Scaffold)</h1>
-+      <p class="muted">This is the placeholder CRM UI. Replace with your React/Vue app and route /login/ here.</p>
-+      <div style="margin-top:16px; display:flex; gap:12px; flex-wrap:wrap;">
++  <header>
++    <nav>
++      <div class="brand">
++        <span style="display:grid;place-items:center;width:34px;height:34px;border-radius:12px;background:rgba(34,197,94,0.16);color:var(--accent);font-weight:800;">CB</span>
++        <span>ChatBox CRM</span>
++      </div>
++      <span class="pill">/login · /admin</span>
++    </nav>
++  </header>
++
++  <main class="shell">
++    <section class="hero">
++      <h1>Modern pipeline + chat console for fast-moving teams.</h1>
++      <p>Manage deals, contacts, activities, and live website chats in one place. Start with this scaffold and plug in your React/Vue frontend and PHP API.</p>
++      <div class="actions">
 +        <button class="btn btn-primary">Go to Login (/login/)</button>
-+        <button class="btn" style="background:#1f2937; color:#e2e8f0; border:1px solid #22c55e;">Open Pipeline Board</button>
++        <button class="btn btn-ghost">Open Pipeline Board</button>
 +      </div>
-+      <div class="grid">
-+        <div class="card">
-+          <h2>Pipeline</h2>
-+          <p class="muted">Kanban stages, drag-and-drop, quick actions.</p>
-+        </div>
-+        <div class="card">
-+          <h2>Contacts & Companies</h2>
-+          <p class="muted">Search, filters, dedupe hints, custom fields.</p>
-+        </div>
-+        <div class="card">
-+          <h2>Chat Console</h2>
-+          <p class="muted">Reply to website visitors, view attribution, update lead status.</p>
-+        </div>
++    </section>
++
++    <section class="grid">
++      <div class="card">
++        <div class="badge">Pipeline</div>
++        <h3>Kanban, drag-and-drop</h3>
++        <p>Stage-based sales view with quick actions, filters by owner, stage, value, and lead status.</p>
 +      </div>
-+    </div>
-+  </div>
++      <div class="card">
++        <div class="badge">Contacts & Companies</div>
++        <h3>360° profiles</h3>
++        <p>Custom fields, dedupe hints, timeline of activities/notes, and linked deals.</p>
++      </div>
++      <div class="card">
++        <div class="badge">Chat Console</div>
++        <h3>Reply without context switching</h3>
++        <p>Answer website chats, see attribution (gclid/fbclid/UTM), and update lead status.</p>
++      </div>
++      <div class="card">
++        <div class="badge">Exports & Reporting</div>
++        <h3>CSV + dashboards</h3>
++        <p>Export deals/contacts/conversations with custom fields and attribution, ready for BI.</p>
++      </div>
++    </section>
++
++    <footer>
++      ChatBox CRM scaffold · Replace this shell with your SPA · Secure API: /auth, /session, /messages.
++    </footer>
++  </main>
 +</body>
 +</html>
 diff --git a/widget/src/widget.js b/widget/src/widget.js
