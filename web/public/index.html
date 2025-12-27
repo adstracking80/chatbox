@@ -6,22 +6,22 @@
   <title>ChatBox CRM</title>
   <style>
     :root {
-      --bg: #07090f;
-      --panel: #0f172a;
-      --panel-2: #111827;
-      --text: #e2e8f0;
-      --muted: #94a3b8;
-      --accent: #22c55e;
-      --accent-2: #5eead4;
-      --border: #1f2937;
-      --shadow: 0 25px 80px rgba(0, 0, 0, 0.35);
+      --bg: #f6f7fb;
+      --panel: #ffffff;
+      --panel-2: #f1f5f9;
+      --text: #0f172a;
+      --muted: #475569;
+      --accent: #10b981;
+      --accent-2: #0ea5e9;
+      --border: #d6dbe5;
+      --shadow: 0 16px 50px rgba(15, 23, 42, 0.12);
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
-      background: radial-gradient(circle at 20% 20%, rgba(94, 234, 212, 0.08), transparent 25%),
-                  radial-gradient(circle at 80% 0%, rgba(34, 197, 94, 0.1), transparent 30%),
+      background: radial-gradient(circle at 20% 20%, rgba(14,165,233,0.08), transparent 22%),
+                  radial-gradient(circle at 70% 0%, rgba(16,185,129,0.1), transparent 30%),
                   var(--bg);
       color: var(--text);
       min-height: 100vh;
@@ -29,7 +29,7 @@
     header {
       border-bottom: 1px solid var(--border);
       backdrop-filter: blur(10px);
-      background: rgba(7, 9, 15, 0.75);
+      background: rgba(255, 255, 255, 0.9);
       position: sticky;
       top: 0;
       z-index: 10;
@@ -50,9 +50,9 @@
       letter-spacing: 0.2px;
     }
     nav .pill {
-      background: rgba(34, 197, 94, 0.12);
+      background: rgba(16,185,129,0.12);
       color: var(--accent);
-      border: 1px solid rgba(34, 197, 94, 0.25);
+      border: 1px solid rgba(16,185,129,0.25);
       padding: 6px 12px;
       border-radius: 999px;
       font-size: 13px;
@@ -60,7 +60,7 @@
     }
     .shell { max-width: 1180px; margin: 0 auto; padding: 48px 24px 80px; }
     .hero {
-      background: linear-gradient(135deg, rgba(34, 197, 94, 0.12), rgba(94, 234, 212, 0.08)) , var(--panel);
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(14, 165, 233, 0.1)) , var(--panel);
       border: 1px solid var(--border);
       border-radius: 16px;
       padding: 36px;
@@ -81,8 +81,9 @@
       font-weight: 700;
       transition: all 0.16s ease;
       font-size: 14px;
+      text-decoration: none;
     }
-    .btn-primary { background: var(--accent); color: #0b1224; border-color: rgba(34, 197, 94, 0.4); box-shadow: 0 10px 30px rgba(34, 197, 94, 0.35); }
+    .btn-primary { background: var(--accent); color: #0b1224; border-color: rgba(16, 185, 129, 0.4); box-shadow: 0 10px 30px rgba(16, 185, 129, 0.25); }
     .btn-ghost { background: transparent; color: var(--text); border-color: var(--border); }
     .btn:hover { transform: translateY(-1px); }
     .grid {
@@ -97,12 +98,12 @@
       border-radius: 14px;
       padding: 18px;
       min-height: 170px;
-      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.25);
+      box-shadow: 0 14px 40px rgba(0, 0, 0, 0.08);
       transform: translateY(10px);
       opacity: 0;
       animation: cardIn 0.7s ease forwards;
     }
-    .card h3 { margin: 0 0 10px; font-size: 18px; }
+    .card h3 { margin: 0 0 10px; font-size: 18px; color: #0f172a; }
     .card p { margin: 0; color: var(--muted); line-height: 1.5; }
     .badge {
       display: inline-flex;
@@ -112,8 +113,8 @@
       border-radius: 999px;
       font-size: 12px;
       color: var(--accent);
-      background: rgba(34, 197, 94, 0.1);
-      border: 1px solid rgba(34, 197, 94, 0.3);
+      background: rgba(16,185,129,0.1);
+      border: 1px solid rgba(16,185,129,0.25);
     }
     footer { margin-top: 32px; color: var(--muted); font-size: 13px; text-align: center; }
 
@@ -131,7 +132,7 @@
   <header>
     <nav>
       <div class="brand">
-        <span style="display:grid;place-items:center;width:34px;height:34px;border-radius:12px;background:rgba(34,197,94,0.16);color:var(--accent);font-weight:800;">CB</span>
+        <span style="display:grid;place-items:center;width:34px;height:34px;border-radius:12px;background:rgba(16,185,129,0.16);color:var(--accent);font-weight:800;">CB</span>
         <span>ChatBox CRM</span>
       </div>
       <span class="pill">
@@ -163,7 +164,7 @@
         <h3>360° profiles</h3>
         <p>Custom fields, dedupe hints, timeline of activities/notes, and linked deals.</p>
       </div>
-      <div class="card">
+        <div class="card">
         <div class="badge">Chat Console</div>
         <h3>Reply without context switching</h3>
         <p>Answer website chats, see attribution (gclid/fbclid/UTM), and update lead status.</p>
