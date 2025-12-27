@@ -1,3 +1,4 @@
+ (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
 diff --git a/README.md b/README.md
 index e0cc0f862a1d1bbccbda7966435489813bbd19ce..5eb605699b90c2d733e5ba4721126f0294e662e0 100644
 --- a/README.md
@@ -1071,3 +1072,6 @@ index 0000000000000000000000000000000000000000..fd1958a2b07b0226b18581de83b2d877
 +  sendBtn&&sendBtn.addEventListener("click",handleSend);
 +  msgInput&&msgInput.addEventListener("keydown",e=>{if(e.key==="Enter")handleSend();});
 +})();
+ 
+EOF
+)
