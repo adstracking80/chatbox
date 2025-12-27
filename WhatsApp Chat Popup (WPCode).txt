@@ -1,0 +1,256 @@
+/**
+ * ✅ WhatsApp-style Chat Popup (WPCode JS)
+ * ✅ NEW: User must enter a VALID EMAIL first. Only then "Send" will open WhatsApp.
+ * - First send: expects email → validates → opens WhatsApp with email intro + stores email (localStorage)
+ * - Next sends: expects message → opens WhatsApp with "Email: ..." + message
+ */
+(function () {
+  if (window.__atWaWpcodeInjected_v3) return;
+  window.__atWaWpcodeInjected_v3 = true;
+
+  // =========================
+  // CONFIG
+  // =========================
+  var CFG = {
+    name: "Rifat",
+    subText: "Typically replies in a few hours",
+    greetingHtml: "Hi there 🙂,<br>How can I help you?<br><b>To start chat, enter your email</b>",
+    buttonText: "Start Chat",
+
+    phoneIntl: "8801410022289", // ✅ no +, no spaces
+
+    avatarUrl: "https://adsandtracking.com/wp-content/uploads/2025/12/whatsapp_user.png",
+    bgUrl: "https://adsandtracking.com/wp-content/uploads/2025/12/whatsapp-background.png",
+    fabIconPng: "https://adsandtracking.com/wp-content/uploads/2025/12/WhatsApplogo-1.png",
+
+    // Input placeholders
+    emailPlaceholder: "Enter your email to start",
+    msgPlaceholder: "Write your message",
+
+    // Storage key (so user doesn't need to retype email)
+    emailStorageKey: "atWa_chat_email",
+
+    // Position
+    rightPx: 22,
+    bottomPx: 22,
+
+    // Colors
+    headerBg: "#1f2d3d",
+    primary: "#1fbf5b"
+  };
+
+  // =========================
+  // Helpers
+  // =========================
+  function isValidEmail(email) {
+    email = String(email || "").trim();
+    // simple + reliable email check
+    return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
+  }
+
+  function safeGetStoredEmail() {
+    try {
+      var v = localStorage.getItem(CFG.emailStorageKey) || "";
+      return isValidEmail(v) ? v.trim() : "";
+    } catch (e) {
+      return "";
+    }
+  }
+
+  function storeEmail(email) {
+    try { localStorage.setItem(CFG.emailStorageKey, String(email || "").trim()); } catch (e) {}
+  }
+
+  // =========================
+  // Inject CSS
+  // =========================
+  var css =
+    ".at-wa-chat{position:fixed;right:" + CFG.rightPx + "px;bottom:" + CFG.bottomPx + "px;z-index:999999;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;}" +
+    ".at-wa-fab{display:inline-flex;align-items:center;gap:10px;background:" + CFG.primary + ";color:#fff;border:0;border-radius:999px;padding:12px 16px;cursor:pointer;box-shadow:0 18px 45px rgba(0,0,0,.18);}" +
+    ".at-wa-fab:active{transform:translateY(1px)}" +
+    ".at-wa-fab-icon{width:36px;height:36px;display:grid;place-items:center;border-radius:999px;background:rgba(255,255,255,.18);}" +
+    ".at-wa-fab-icon img{width:20px;height:20px;display:block;object-fit:contain;}" +
+    ".at-wa-fab-text{font-weight:600;font-size:14px;}" +
+    ".at-wa-panel{width:330px;max-width:calc(100vw - 44px);background:#fff;border-radius:14px;box-shadow:0 18px 45px rgba(0,0,0,.18);overflow:hidden;position:absolute;right:0;bottom:64px;opacity:0;visibility:hidden;transform:translateY(10px);transition:.18s ease;}" +
+    ".at-wa-chat.is-open .at-wa-panel{opacity:1;visibility:visible;transform:translateY(0);}" +
+    ".at-wa-header{display:flex;align-items:center;gap:12px;padding:12px;background:" + CFG.headerBg + ";color:#fff;}" +
+    ".at-wa-header-img img{width:42px;height:42px;border-radius:999px;object-fit:cover;}" +
+    ".at-wa-header-content{flex:1;}" +
+    ".at-wa-header-name{font-weight:700;font-size:14px;line-height:1.1;}" +
+    ".at-wa-header-sub{font-size:12px;color:rgba(255,255,255,.8);margin-top:2px;}" +
+    ".at-wa-close{border:0;background:transparent;color:rgba(255,255,255,.9);font-size:18px;cursor:pointer;width:34px;height:34px;border-radius:10px;}" +
+    ".at-wa-close:hover{background:rgba(255,255,255,.12);}" +
+    ".at-wa-body{height:240px;padding:14px;background-image:url('" + CFG.bgUrl + "');background-size:cover;background-position:center;position:relative;}" +
+    ".at-wa-body:after{content:'';position:absolute;inset:0;background:rgba(255,255,255,.68);}" +
+    ".at-wa-bubble{position:relative;z-index:1;max-width:85%;background:#fff;border-radius:12px;padding:10px 12px;box-shadow:0 8px 20px rgba(0,0,0,.10);}" +
+    ".at-wa-bubble-name{font-weight:700;font-size:12px;color:#6b7280;margin-bottom:4px;}" +
+    ".at-wa-bubble-text{font-size:13px;color:#111827;line-height:1.35;}" +
+    ".at-wa-bubble-time{margin-top:6px;font-size:11px;color:#6b7280;text-align:right;}" +
+    ".at-wa-input{display:flex;gap:10px;padding:10px;background:#fff;border-top:1px solid rgba(0,0,0,.06);}" +
+    ".at-wa-input-field{flex:1;border:1px solid rgba(0,0,0,.12);border-radius:999px;padding:10px 12px;font-size:13px;outline:none;}" +
+    ".at-wa-input-field:focus{border-color:rgba(31,191,91,.55);box-shadow:0 0 0 3px rgba(31,191,91,.15);}" +
+    ".at-wa-input-field.at-wa-error{border-color:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.15);}" +
+    ".at-wa-send{width:42px;height:42px;border-radius:999px;border:0;cursor:pointer;background:" + CFG.primary + ";color:#fff;font-size:16px;}" +
+    ".at-wa-send:active{transform:translateY(1px)}" +
+    "@media (max-width:420px){.at-wa-fab-text{display:none;}}";
+
+  var styleEl = document.createElement("style");
+  styleEl.id = "atWaWpcodeStyle_v3";
+  styleEl.appendChild(document.createTextNode(css));
+  document.head.appendChild(styleEl);
+
+  // =========================
+  // Inject HTML
+  // =========================
+  var root = document.createElement("div");
+  root.className = "at-wa-chat";
+  root.id = "atWaChat";
+
+  var safeIcon = CFG.fabIconPng ? String(CFG.fabIconPng) : "";
+
+  root.innerHTML =
+    '<button class="at-wa-fab" type="button" id="atWaOpenBtn" aria-label="Chat with us">' +
+      '<span class="at-wa-fab-icon" aria-hidden="true"><img src="' + safeIcon + '" alt="" /></span>' +
+      '<span class="at-wa-fab-text">' + CFG.buttonText + "</span>" +
+    "</button>" +
+    '<div class="at-wa-panel" role="dialog" aria-label="WhatsApp chat popup">' +
+      '<div class="at-wa-header">' +
+        '<div class="at-wa-header-img"><img id="atWaAvatar" alt="Support" /></div>' +
+        '<div class="at-wa-header-content">' +
+          '<div class="at-wa-header-name">' + CFG.name + "</div>" +
+          '<div class="at-wa-header-sub">' + CFG.subText + "</div>" +
+        "</div>" +
+        '<button class="at-wa-close" type="button" id="atWaCloseBtn" aria-label="Close">✕</button>' +
+      "</div>" +
+      '<div class="at-wa-body">' +
+        '<div class="at-wa-bubble">' +
+          '<div class="at-wa-bubble-name">' + CFG.name + "</div>" +
+          '<div class="at-wa-bubble-text" id="atWaBubbleText">' + CFG.greetingHtml + "</div>" +
+          '<div class="at-wa-bubble-time" id="atWaTime"></div>' +
+        "</div>" +
+      "</div>" +
+      '<div class="at-wa-input">' +
+        '<input id="atWaMsg" class="at-wa-input-field" type="text" />' +
+        '<button id="atWaSendBtn" class="at-wa-send" type="button" aria-label="Send">➤</button>' +
+      "</div>" +
+    "</div>";
+
+  document.body.appendChild(root);
+
+  // Set avatar
+  var avatarEl = document.getElementById("atWaAvatar");
+  if (avatarEl) avatarEl.src = CFG.avatarUrl;
+
+  // =========================
+  // State (email gating)
+  // =========================
+  var userEmail = safeGetStoredEmail(); // if stored, user can directly message
+  var hasEmail = !!userEmail;
+
+  // =========================
+  // Behavior
+  // =========================
+  var openBtn = document.getElementById("atWaOpenBtn");
+  var closeBtn = document.getElementById("atWaCloseBtn");
+  var sendBtn = document.getElementById("atWaSendBtn");
+  var msgInput = document.getElementById("atWaMsg");
+  var timeEl = document.getElementById("atWaTime");
+  var bubbleTextEl = document.getElementById("atWaBubbleText");
+
+  function setTimeNow() {
+    var d = new Date();
+    var hh = String(d.getHours()).padStart(2, "0");
+    var mm = String(d.getMinutes()).padStart(2, "0");
+    if (timeEl) timeEl.textContent = hh + ":" + mm;
+  }
+
+  function updateInputUI() {
+    if (!msgInput) return;
+    msgInput.classList.remove("at-wa-error");
+    msgInput.placeholder = hasEmail ? CFG.msgPlaceholder : CFG.emailPlaceholder;
+  }
+
+  setTimeNow();
+  updateInputUI();
+
+  function openChat() {
+    root.classList.add("is-open");
+    setTimeNow();
+    updateInputUI();
+    setTimeout(function () {
+      try { msgInput && msgInput.focus(); } catch (e) {}
+    }, 50);
+  }
+
+  function closeChat() {
+    root.classList.remove("is-open");
+  }
+
+  function toggleChat() {
+    root.classList.contains("is-open") ? closeChat() : openChat();
+  }
+
+  function openWhatsApp(message) {
+    var url = "https://wa.me/" + CFG.phoneIntl + "?text=" + encodeURIComponent(message);
+    window.open(url, "_blank", "noopener");
+  }
+
+  function send() {
+    var text = (msgInput && msgInput.value ? msgInput.value : "").trim();
+    if (!text) return;
+
+    msgInput.classList.remove("at-wa-error");
+
+    // ✅ Step 1: Require valid email first
+    if (!hasEmail) {
+      if (!isValidEmail(text)) {
+        msgInput.classList.add("at-wa-error");
+        msgInput.value = "";
+        msgInput.placeholder = "Enter a valid email (example: you@email.com)";
+        return;
+      }
+
+      userEmail = text.trim();
+      hasEmail = true;
+      storeEmail(userEmail);
+
+      // Start chat with email intro
+      var startMsg = "Hi! My email is " + userEmail + ". I'd like to start a chat.";
+      openWhatsApp(startMsg);
+
+      // Optional: update bubble + UI
+      if (bubbleTextEl) {
+        bubbleTextEl.innerHTML = "✅ Email saved: <b>" + userEmail + "</b><br>Now type your message.";
+      }
+      msgInput.value = "";
+      updateInputUI();
+      return;
+    }
+
+    // ✅ Step 2: Send message (always includes email)
+    var fullMsg = "Email: " + userEmail + "\n\n" + text;
+    openWhatsApp(fullMsg);
+
+    msgInput.value = "";
+  }
+
+  if (openBtn) openBtn.addEventListener("click", toggleChat);
+  if (closeBtn) closeBtn.addEventListener("click", closeChat);
+  if (sendBtn) sendBtn.addEventListener("click", send);
+
+  if (msgInput) {
+    msgInput.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") send();
+    });
+  }
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") closeChat();
+  });
+
+  // Click outside closes (optional)
+  document.addEventListener("mousedown", function (e) {
+    if (!root.classList.contains("is-open")) return;
+    if (!root.contains(e.target)) closeChat();
+  });
+})();
